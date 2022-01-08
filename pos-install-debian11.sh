@@ -99,11 +99,19 @@ unzip xfce-setup.zip
 ## git clones
 git clone https://github.com/vinceliuice/Qogir-theme.git
 git clone https://github.com/vinceliuice/Qogir-icon-theme.git
+git clone https://github.com/dracula/xfce4-terminal.git
 
 ## Install Qogir theme, Qogir icon theme and Qogir cursors
 ./Qogir-theme/install.sh
 ./Qogir-icon-theme/install.sh
 ./Qogir-icon-theme/src/cursors/install.sh
+
+## Install Dracula theme in xfce terminal
+if [ ! -d ~/.local/share/xfce4/terminal/colorschemes ]; then
+    sudo mkdir ~/.local/share/xfce4/terminal/colorschemes
+fi
+
+sudo cp xfce4-terminal/Dracula.theme ~/.local/share/xfce4/terminal/colorschemes
 
 ## Fonts
 cp -r xfce-setup/fonts/iosevka-term ../.fonts
