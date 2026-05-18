@@ -76,6 +76,7 @@ DIRECTORY_BINARIES_TO_INSTALL="$PWD/temps"
 # =================================
 PACKAGES_FROM_PACMAN_TO_INSTALL=(
   firefox
+  vlc
   docker
   dotnet-sdk
   curl
