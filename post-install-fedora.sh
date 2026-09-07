@@ -4,6 +4,9 @@
 # Personal script for Fedora 44 Gnome version #
 # =============================================
 
+# To install this script, run the following command in your terminal:
+# sudo bash <(curl -fsSL https://raw.githubusercontent.com/Gabriel-Moya/personal-linux/refs/heads/master/post-install-fedora.sh)
+
 if [ "$EUID" -ne 0 ]; then
   echo "Please run this script as root (e.g., using sudo)."
   exit 1
@@ -23,6 +26,8 @@ fi
 #   echo "Error: Passwords do not match. Please run the script again and enter matching passwords."
 #   exit 1
 # fi
+
+TARGET_USER="${SUDO_USER:-$USER}"
 
 DNF_PACKAGES=(
   zsh
@@ -64,13 +69,13 @@ done
 
 # DNF Packages
 dnf check-update
-dnf install -y "${DNF_PACKAGES[@]}"
+dnf install -y --noninteractive "${DNF_PACKAGES[@]}"
 
 # Configure Docker to start on boot and add the current user to the docker group
 systemctl enable docker
 systemctl start docker
 
-usermod -aG docker $USER
+usermod -aG docker $TARGET_USER
 
 # Enable the system tray
 dnf install -y libappindicator-gtk3 gnome-shell-extension-appindicator gnome-extensions-app
