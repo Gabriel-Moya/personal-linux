@@ -5,7 +5,7 @@
 # =============================================
 
 # To install this script, run the following command in your terminal:
-# sudo bash <(curl -fsSL https://raw.githubusercontent.com/Gabriel-Moya/personal-linux/refs/heads/master/post-install-fedora.sh)
+# sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Gabriel-Moya/personal-linux/refs/heads/master/post-install-fedora.sh)"
 
 if [ "$EUID" -ne 0 ]; then
   echo "Please run this script as root (e.g., using sudo)."
