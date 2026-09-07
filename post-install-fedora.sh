@@ -78,7 +78,7 @@ systemctl start docker
 usermod -aG docker $TARGET_USER
 
 # Enable the system tray
-dnf install -y libappindicator-gtk3 gnome-shell-extension-appindicator gnome-extensions-app
+dnf install -y --noninteractive libappindicator-gtk3 gnome-shell-extension-appindicator gnome-extensions-app
 
 
 # install jetbrains-toolbox
