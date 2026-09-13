@@ -12,21 +12,6 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# ===========================
-# Getting user and password #
-# ===========================
-# read -p "Enter the username for the new system: " USER
-# echo ""
-# read -s -p "Enter the password for the new user: " PASSWORD
-# echo ""
-# read -s -p "Confirm the password: " PASSWORD_CONFIRM
-# echo ""
-
-# if [ "$PASSWORD" != "$PASSWORD_CONFIRM" ]; then
-#   echo "Error: Passwords do not match. Please run the script again and enter matching passwords."
-#   exit 1
-# fi
-
 TARGET_USER="${SUDO_USER:-$USER}"
 
 DNF_PACKAGES=(
@@ -34,11 +19,19 @@ DNF_PACKAGES=(
   code
   flameshot
   vlc
+  vlc-plugin-ffmpeg
+  libavcodec-freeworld
+  google-chrome-stable
+  # Docker packages
   docker-ce
   docker-ce-cli
   containerd.io
   docker-buildx-plugin
   docker-compose-plugin
+  # System tray
+  libappindicator-gtk3
+  gnome-shell-extension-appindicator
+  gnome-extensions-app
 )
 
 FLATPAK_PACKAGES=(
@@ -46,6 +39,11 @@ FLATPAK_PACKAGES=(
   com.bitwarden.desktop
   rest.insomnia.Insomnia
 )
+
+# Enable RPM Fusion repositories for additional software
+dnf install -y "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
+
+dnf install -y fedora-workstation-repositories
 
 # Prepare flatpak
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
@@ -56,6 +54,9 @@ echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com
 
 # Setup Docker Repository
 dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
+
+# Setup Google Chrome Repository
+dnf config-manager setopt google-chrome.enabled=1
 
 # =======================
 # Install brave browser #
@@ -69,7 +70,7 @@ done
 
 # DNF Packages
 dnf check-update
-dnf install -y --noninteractive "${DNF_PACKAGES[@]}"
+dnf install -y "${DNF_PACKAGES[@]}"
 
 # Configure Docker to start on boot and add the current user to the docker group
 systemctl enable docker
@@ -78,9 +79,10 @@ systemctl start docker
 usermod -aG docker $TARGET_USER
 
 # Enable the system tray
-dnf install -y --noninteractive libappindicator-gtk3 gnome-shell-extension-appindicator gnome-extensions-app
+dnf install -y libappindicator-gtk3 gnome-shell-extension-appindicator gnome-extensions-app
 
-
+# Chrome
+# Discord
 # install jetbrains-toolbox
 # install video codecs
 # create directories like ~/dev to store github projects
