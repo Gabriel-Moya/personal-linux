@@ -46,11 +46,12 @@ DNF_PACKAGES=(
   gtk3
   glx-utils
   xcb-util-keysyms
-  # System tray
+  # GNOME extensions: system tray and dock
   libappindicator-gtk3
   gnome-shell-extension-appindicator
+  gnome-shell-extension-dash-to-dock
   gnome-extensions-app
-  # Configure GNOME settings in a user D-Bus session
+  # Fallback D-Bus session when the desktop user's bus is unavailable
   dbus-daemon
 )
 
@@ -168,42 +169,110 @@ systemctl enable --now docker
 
 usermod -aG docker "$TARGET_USER"
 
-# Persist the system tray setting for the desktop user. A new GNOME session
-# may be needed before the freshly installed extension becomes available.
-runuser -u "$TARGET_USER" -- env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR \
-  dbus-run-session -- bash -s <<'BASH'
+# Persist extension activation and dock settings for the desktop user. A new
+# GNOME session may be needed before freshly installed extensions become available.
+target_runtime_dir="/run/user/$(id -u "$TARGET_USER")"
+gnome_session=(env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR)
+if [[ -d "$target_runtime_dir" ]]; then
+  gnome_session+=("XDG_RUNTIME_DIR=$target_runtime_dir")
+fi
+if [[ -S "$target_runtime_dir/bus" ]]; then
+  # Use the desktop's dconf service so the running GNOME session sees the changes.
+  gnome_session+=("DBUS_SESSION_BUS_ADDRESS=unix:path=$target_runtime_dir/bus")
+  echo "Configuring GNOME through the existing D-Bus session for $TARGET_USER."
+else
+  gnome_session+=(dbus-run-session --)
+  echo "No user D-Bus found. Saving GNOME settings for the next login."
+fi
+
+runuser -u "$TARGET_USER" -- "${gnome_session[@]}" bash -s <<'BASH'
 set -euo pipefail
+trap 'printf "GNOME configuration: error on line %s.\n" "$LINENO" >&2' ERR
 
-uuid="appindicatorsupport@rgcjonas.gmail.com"
-enabled="$(gsettings get org.gnome.shell enabled-extensions)"
-if [[ "$enabled" != *"'$uuid'"* ]]; then
-  # gsettings prints an empty string array as "@as []".
-  if [[ "$enabled" == "@as []" || "$enabled" == "[]" ]]; then
-    enabled="['$uuid']"
-  else
-    enabled="${enabled%]}, '$uuid']"
+printf 'GNOME settings: user=%s home=%s bus=%s\n' "$(id -un)" "$HOME" "${DBUS_SESSION_BUS_ADDRESS:-unset}"
+
+extension_uuids=(
+  appindicatorsupport@rgcjonas.gmail.com
+  dash-to-dock@micxgx.gmail.com
+)
+
+for uuid in "${extension_uuids[@]}"; do
+  enabled="$(gsettings get org.gnome.shell enabled-extensions)"
+  if [[ "$enabled" != *"'$uuid'"* ]]; then
+    # gsettings prints an empty string array as "@as []".
+    if [[ "$enabled" == "@as []" || "$enabled" == "[]" ]]; then
+      enabled="['$uuid']"
+    else
+      enabled="${enabled%]}, '$uuid']"
+    fi
+    gsettings set org.gnome.shell enabled-extensions "$enabled"
   fi
-  gsettings set org.gnome.shell enabled-extensions "$enabled"
-fi
 
-disabled="$(gsettings get org.gnome.shell disabled-extensions)"
-if [[ "$disabled" == *"'$uuid'"* ]]; then
-  # Remove this exact quoted UUID at the start, middle or end of the list.
-  disabled="${disabled//"'$uuid', "/}"
-  disabled="${disabled//", '$uuid'"/}"
-  disabled="${disabled//"'$uuid'"/}"
-  gsettings set org.gnome.shell disabled-extensions "$disabled"
-fi
+  disabled="$(gsettings get org.gnome.shell disabled-extensions)"
+  if [[ "$disabled" == *"'$uuid'"* ]]; then
+    # Remove this exact quoted UUID at the start, middle or end of the list.
+    disabled="${disabled//"'$uuid', "/}"
+    disabled="${disabled//", '$uuid'"/}"
+    disabled="${disabled//"'$uuid'"/}"
+    gsettings set org.gnome.shell disabled-extensions "$disabled"
+  fi
+done
 
 extensions_disabled="$(gsettings get org.gnome.shell disable-user-extensions)"
 if [[ "$extensions_disabled" == "true" ]]; then
   gsettings set org.gnome.shell disable-user-extensions false
 fi
+
+# Keep the bottom dock visible, with smaller icons (the default maximum is 48).
+gsettings set org.gnome.shell.extensions.dash-to-dock dock-position 'BOTTOM'
+gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed true
+gsettings set org.gnome.shell.extensions.dash-to-dock dash-max-icon-size 32
+
+# Read back from new gsettings processes: a successful command alone does not
+# guarantee the intended preferences were saved for this user.
+enabled="$(gsettings get org.gnome.shell enabled-extensions)"
+disabled="$(gsettings get org.gnome.shell disabled-extensions)"
+extensions_disabled="$(gsettings get org.gnome.shell disable-user-extensions)"
+dock_position="$(gsettings get org.gnome.shell.extensions.dash-to-dock dock-position)"
+dock_fixed="$(gsettings get org.gnome.shell.extensions.dash-to-dock dock-fixed)"
+dock_icon_size="$(gsettings get org.gnome.shell.extensions.dash-to-dock dash-max-icon-size)"
+printf 'Saved enabled extensions: %s\n' "$enabled"
+printf 'Saved disabled extensions: %s\n' "$disabled"
+printf 'Extensions globally disabled: %s; dock position: %s; always visible: %s; maximum icon size: %s\n' \
+  "$extensions_disabled" "$dock_position" "$dock_fixed" "$dock_icon_size"
+
+for uuid in "${extension_uuids[@]}"; do
+  if [[ "$enabled" != *"'$uuid'"* || "$disabled" == *"'$uuid'"* ]]; then
+    printf 'GNOME configuration: activation was not saved for %s.\n' "$uuid" >&2
+    exit 1
+  fi
+done
+if [[ "$extensions_disabled" != "false" || "$dock_position" != "'BOTTOM'" || "$dock_fixed" != "true" || "$dock_icon_size" != "32" ]]; then
+  echo "GNOME configuration: the saved preferences do not match the requested settings." >&2
+  exit 1
+fi
+
+# Saved preferences and a loaded extension are different things. Report what
+# the current GNOME session knows; a first installation may need a new login.
+if [[ -S "${XDG_RUNTIME_DIR:-}/bus" ]]; then
+  for uuid in "${extension_uuids[@]}"; do
+    if extension_info="$(LC_ALL=C gnome-extensions info "$uuid" 2>&1)"; then
+      printf '%s\n' "$extension_info"
+      if [[ "$extension_info" == *"State: ERROR"* || "$extension_info" == *"State: OUT OF DATE"* ]]; then
+        printf 'GNOME could not load %s. Check its errors with journalctl -b /usr/bin/gnome-shell.\n' "$uuid" >&2
+        exit 1
+      fi
+    else
+      printf '%s\n' "$extension_info" >&2
+      printf 'Settings saved for %s; its runtime state could not be checked. Log out and back in, then run: gnome-extensions info %s\n' "$uuid" "$uuid"
+    fi
+  done
+fi
 BASH
 
-echo "Installation complete. Log out and log back in to apply the GNOME extension and Docker group changes."
+echo "Installation complete. Log out and log back in to apply the GNOME extensions and Docker group changes."
 
 # install video codecs
 # create directories like ~/dev to store github projects
 # configure zsh and oh-my-zsh
-# configure gnome extensions like dash-to-dock, system tray and window tiling etc.
+# configure window tiling
