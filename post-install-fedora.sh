@@ -228,6 +228,25 @@ gsettings set org.gnome.shell.extensions.dash-to-dock dock-position 'BOTTOM'
 gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed true
 gsettings set org.gnome.shell.extensions.dash-to-dock dash-max-icon-size 32
 
+# Pinned applications, from left to right. This replaces the existing favorites.
+favorite_apps=(
+  org.gnome.Ptyxis.desktop         # Terminal
+  org.gnome.Nautilus.desktop       # Files
+  brave-browser.desktop           # Brave
+  google-chrome.desktop           # Chrome
+  org.mozilla.firefox.desktop     # Firefox
+  code.desktop                    # Visual Studio Code
+  com.discordapp.Discord.desktop  # Discord (Flatpak)
+  md.obsidian.Obsidian.desktop     # Obsidian (Flatpak)
+)
+favorites="["
+for desktop_id in "${favorite_apps[@]}"; do
+  favorites+="'$desktop_id', "
+done
+favorites="${favorites%, }]"
+gsettings set org.gnome.shell favorite-apps "$favorites"
+gsettings set org.gnome.shell.extensions.dash-to-dock show-favorites true
+
 # Read back from new gsettings processes: a successful command alone does not
 # guarantee the intended preferences were saved for this user.
 enabled="$(gsettings get org.gnome.shell enabled-extensions)"
@@ -236,8 +255,11 @@ extensions_disabled="$(gsettings get org.gnome.shell disable-user-extensions)"
 dock_position="$(gsettings get org.gnome.shell.extensions.dash-to-dock dock-position)"
 dock_fixed="$(gsettings get org.gnome.shell.extensions.dash-to-dock dock-fixed)"
 dock_icon_size="$(gsettings get org.gnome.shell.extensions.dash-to-dock dash-max-icon-size)"
+saved_favorites="$(gsettings get org.gnome.shell favorite-apps)"
+show_favorites="$(gsettings get org.gnome.shell.extensions.dash-to-dock show-favorites)"
 printf 'Saved enabled extensions: %s\n' "$enabled"
 printf 'Saved disabled extensions: %s\n' "$disabled"
+printf 'Saved pinned applications: %s\n' "$saved_favorites"
 printf 'Extensions globally disabled: %s; dock position: %s; always visible: %s; maximum icon size: %s\n' \
   "$extensions_disabled" "$dock_position" "$dock_fixed" "$dock_icon_size"
 
@@ -249,6 +271,10 @@ for uuid in "${extension_uuids[@]}"; do
 done
 if [[ "$extensions_disabled" != "false" || "$dock_position" != "'BOTTOM'" || "$dock_fixed" != "true" || "$dock_icon_size" != "32" ]]; then
   echo "GNOME configuration: the saved preferences do not match the requested settings." >&2
+  exit 1
+fi
+if [[ "${saved_favorites#@as }" != "$favorites" || "$show_favorites" != "true" ]]; then
+  echo "GNOME configuration: the pinned applications or their order were not saved correctly." >&2
   exit 1
 fi
 
