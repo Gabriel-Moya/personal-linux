@@ -36,6 +36,7 @@ else
     "https://data.services.jetbrains.com/products/download?code=TBA&platform=$platform&type=release")"
 
   # Use the checksum for the exact downloaded version, even if a new release appears.
+  download_url="${download_url%%\?*}"
   checksum="$(curl -fsSL --retry 3 "$download_url.sha256")"
   read -r expected_sha _ <<< "$checksum"
   [[ "$expected_sha" =~ ^[[:xdigit:]]{64}$ ]]
