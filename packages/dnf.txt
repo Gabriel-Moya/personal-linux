@@ -1,0 +1,30 @@
+zsh
+code
+flameshot
+vlc
+vlc-plugin-ffmpeg
+libavcodec-freeworld
+google-chrome-stable
+# Docker packages
+docker-ce
+docker-ce-cli
+containerd.io
+docker-buildx-plugin
+docker-compose-plugin
+# JetBrains Toolbox dependencies
+tar
+gzip
+libXi
+libXrender
+libXtst
+fontconfig
+gtk3
+glx-utils
+xcb-util-keysyms
+# GNOME extensions: system tray and dock
+libappindicator-gtk3
+gnome-shell-extension-appindicator
+gnome-shell-extension-dash-to-dock
+gnome-extensions-app
+# Fallback D-Bus session when the desktop user's bus is unavailable
+dbus-daemon
