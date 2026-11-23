@@ -1,0 +1,11 @@
+[Unit]
+Description=Discord badge bridge (Unity LauncherEntry -> Dash to Dock)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/python3 -I %h/.local/bin/discord-badge-bridge.py
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

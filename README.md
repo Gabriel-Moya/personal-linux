@@ -23,11 +23,44 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Gabriel-Moya/personal-li
 | `jetbrains-toolbox` | Installs JetBrains Toolbox in the user's home |
 | `docker` | Enables Docker and adds the user to the `docker` group |
 | `gnome` | Enables the AppIndicator and Dash to Dock extensions, dock settings and pinned apps |
+| `discord-badge` | Shows Discord's unread counter on its dock icon (see [Discord badge](#discord-badge)) |
 
 To run only some modules, pass their names:
 
 ```bash
 sudo bash install.sh gnome
+```
+
+## Discord badge
+
+The Discord Flatpak does not show its unread counter on Dash to Dock by default, for two reasons:
+
+1. Electron only sends the badge (a `com.canonical.Unity.LauncherEntry` D-Bus signal) when `XDG_CURRENT_DESKTOP` contains `Unity`. On GNOME it is `GNOME`.
+2. Discord sends it as `application://discord`, but the dock only recognizes the Flatpak desktop ID, `application://com.discordapp.Discord.desktop`.
+
+The `discord-badge` module fixes both:
+
+- a Flatpak override sets `XDG_CURRENT_DESKTOP=Unity:GNOME` for Discord;
+- `~/.local/bin/discord-badge-bridge.py` (from `files/`) repeats each badge update under the Flatpak ID and clears the badge when Discord exits;
+- the user service `discord-badge-bridge.service` runs the bridge with the graphical session.
+
+Restart Discord after the first install. In Discord's notification settings, "Enable Unread Message Badge" must be on; that setting cannot be automated.
+
+This only covers the Flatpak. Another Discord package uses a different `.desktop` name, so `DST_URI` in the bridge must be changed.
+
+To check the signals, run the command below and wait for a new message. Each update should appear twice: once for `application://discord` and once for `application://com.discordapp.Discord.desktop`, with the same `count`. If the badge stops working after a Discord update, use it to see which URI Discord sends and update `SRC_URIS` in the bridge.
+
+```bash
+dbus-monitor --session "interface='com.canonical.Unity.LauncherEntry'"
+```
+
+To undo it:
+
+```bash
+flatpak override --user --unset-env=XDG_CURRENT_DESKTOP com.discordapp.Discord
+systemctl --user disable --now discord-badge-bridge.service
+rm ~/.local/bin/discord-badge-bridge.py ~/.config/systemd/user/discord-badge-bridge.service
+systemctl --user daemon-reload
 ```
 
 ## Testing in a VM

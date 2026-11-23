@@ -28,3 +28,5 @@ gnome-shell-extension-dash-to-dock
 gnome-extensions-app
 # Fallback D-Bus session when the desktop user's bus is unavailable
 dbus-daemon
+# Discord badge bridge (python3 + Gio)
+python3-gobject

@@ -42,6 +42,8 @@ fi
 gsettings set org.gnome.shell.extensions.dash-to-dock dock-position 'BOTTOM'
 gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed true
 gsettings set org.gnome.shell.extensions.dash-to-dock dash-max-icon-size 32
+# Show unread counters (badges) on the dock icons.
+gsettings set org.gnome.shell.extensions.dash-to-dock show-icons-notifications-counter true
 
 # Pinned applications, from left to right. This replaces the existing favorites.
 favorite_apps=(
@@ -70,13 +72,14 @@ extensions_disabled="$(gsettings get org.gnome.shell disable-user-extensions)"
 dock_position="$(gsettings get org.gnome.shell.extensions.dash-to-dock dock-position)"
 dock_fixed="$(gsettings get org.gnome.shell.extensions.dash-to-dock dock-fixed)"
 dock_icon_size="$(gsettings get org.gnome.shell.extensions.dash-to-dock dash-max-icon-size)"
+dock_counters="$(gsettings get org.gnome.shell.extensions.dash-to-dock show-icons-notifications-counter)"
 saved_favorites="$(gsettings get org.gnome.shell favorite-apps)"
 show_favorites="$(gsettings get org.gnome.shell.extensions.dash-to-dock show-favorites)"
 printf 'Saved enabled extensions: %s\n' "$enabled"
 printf 'Saved disabled extensions: %s\n' "$disabled"
 printf 'Saved pinned applications: %s\n' "$saved_favorites"
-printf 'Extensions globally disabled: %s; dock position: %s; always visible: %s; maximum icon size: %s\n' \
-  "$extensions_disabled" "$dock_position" "$dock_fixed" "$dock_icon_size"
+printf 'Extensions globally disabled: %s; dock position: %s; always visible: %s; maximum icon size: %s; unread counters: %s\n' \
+  "$extensions_disabled" "$dock_position" "$dock_fixed" "$dock_icon_size" "$dock_counters"
 
 for uuid in "${extension_uuids[@]}"; do
   if [[ "$enabled" != *"'$uuid'"* || "$disabled" == *"'$uuid'"* ]]; then
@@ -84,7 +87,7 @@ for uuid in "${extension_uuids[@]}"; do
     exit 1
   fi
 done
-if [[ "$extensions_disabled" != "false" || "$dock_position" != "'BOTTOM'" || "$dock_fixed" != "true" || "$dock_icon_size" != "32" ]]; then
+if [[ "$extensions_disabled" != "false" || "$dock_position" != "'BOTTOM'" || "$dock_fixed" != "true" || "$dock_icon_size" != "32" || "$dock_counters" != "true" ]]; then
   echo "GNOME configuration: the saved preferences do not match the requested settings." >&2
   exit 1
 fi
