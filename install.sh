@@ -11,7 +11,7 @@ trap 'printf "Error on line %s. Installation stopped.\n" "$LINENO" >&2' ERR
 # Without arguments, every module runs in the order of ALL_MODULES.
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ALL_MODULES=(repos packages jetbrains-toolbox docker gnome)
+ALL_MODULES=(repos packages jetbrains-toolbox docker gnome discord-badge)
 
 if [ "$EUID" -ne 0 ]; then
   echo "Please run this script as root (e.g., using sudo)."
