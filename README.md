@@ -24,6 +24,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Gabriel-Moya/personal-li
 | `docker` | Enables Docker and adds the user to the `docker` group |
 | `gnome` | Enables the AppIndicator and Dash to Dock extensions, dock settings and pinned apps |
 | `discord-badge` | Shows Discord's unread counter on its dock icon (see [Discord badge](#discord-badge)) |
+| `cedilla` | Makes `'` + `c` type `ç` on the US international layout (see [Cedilla](#cedilla)) |
 
 To run only some modules, pass their names:
 
@@ -62,6 +63,27 @@ systemctl --user disable --now discord-badge-bridge.service
 rm ~/.local/bin/discord-badge-bridge.py ~/.config/systemd/user/discord-badge-bridge.service
 systemctl --user daemon-reload
 ```
+
+## Cedilla
+
+On the US international layout (`us+intl` or `us+alt-intl`) with IBus, the GNOME default on Fedora, `'` + `c` types `ć`. The `cedilla` module makes it type `ç` by adding these lines to `~/.XCompose`:
+
+```
+include "%L"
+
+<dead_acute> <c> : "ç" ccedilla
+<dead_acute> <C> : "Ç" Ccedilla
+```
+
+- `include "%L"` loads the default compose table for the locale. Without it, some apps lose every other accent combination. If the file does not have it, the module adds it at the top.
+- When the same sequence is defined twice, the last definition wins. The module appends the rules unless they already come after every `include` line and every other definition of the same sequence.
+- An existing file keeps its content: the module only adds what is missing, so it can run again without duplicating lines.
+
+IBus reads the file when it starts. When the module runs inside the desktop session, it restarts IBus; otherwise, log out and log back in. Apps that do not use IBus apply the change when reopened.
+
+If `~/.config/ibus/Compose`, `~/.config/gtk-4.0/Compose` or `~/.config/gtk-3.0/Compose` exists, it may be read instead of `~/.XCompose`. The module warns about it; add the same rules to that file.
+
+To undo it, remove those lines from `~/.XCompose` (or delete the file if the module created it) and run `ibus restart`.
 
 ## Testing in a VM
 
